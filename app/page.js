@@ -1,10 +1,12 @@
-import { Button } from "@nextui-org/button";
-import Image from "next/image";
+
+import EntryAnimation from "./components/EntryAnimation";
+
+
 export default function Home() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-zinc-200">
-      My Home Page
-      <Button color="primary">Click me</Button>
+    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-tr
+      from-teal-300 via-white to-blue-300">
+      <EntryAnimation/>
     </main>
   );
 }
