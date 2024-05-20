@@ -1,23 +1,16 @@
-'use client'
-
 import React from "react";
-import {Accordion, AccordionItem} from "@nextui-org/react";
+import ActivityTable from "../components/Table";
 
-export default function App() {
-  const defaultContent =
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.";
+async function getData() {
+  const res = await fetch("http://localhost:3000/api/database");
+  if (!res.ok) {
+    throw new Error("Failed to fetch data");
+  }
 
-  return (
-    <Accordion variant="splitted">
-      <AccordionItem key="1" aria-label="Accordion 1" title="Accordion 1">
-        {defaultContent}
-      </AccordionItem>
-      <AccordionItem key="2" aria-label="Accordion 2" title="Accordion 2">
-        {defaultContent}
-      </AccordionItem>
-      <AccordionItem key="3" aria-label="Accordion 3" title="Accordion 3">
-        {defaultContent}
-      </AccordionItem>
-    </Accordion>
-  );
+  return res.json();
+}
+
+export default async function App() {
+  const data = (await getData()).data;
+  return <ActivityTable data={data.slice(0, 200)} />;
 }
