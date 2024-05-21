@@ -24,7 +24,7 @@ const SidebarContent = ({ onClose, ...rest }) => {
       {...rest}
     >
       <Flex h="20" alignItems="center" mx="8" my={4} justifyContent="space-between">
-        <Image src={"/greenhood.jpg"} width={150} height={30} className="z-[-1]" alt="Logo"/>
+        <Image priority={true} src={"/greenhood.jpg"} width={150} height={30} className="z-[-1]" alt="Logo"/>
         <CloseButton display={{ base: "flex", md: "none" }} onClick={onClose} />
       </Flex>
       {LinkItems.map((link) => (
