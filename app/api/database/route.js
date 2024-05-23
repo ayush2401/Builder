@@ -9,7 +9,7 @@ export async function getGoogleSheetData() {
       "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/spreadsheets.readonly",
     ];
-    
+
     const jwt = new google.auth.JWT(
       process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
       undefined,
@@ -34,7 +34,7 @@ export async function getGoogleSheetData() {
 export async function GET() {
   try {
     const data = await getGoogleSheetData();
-    return Response.json({ data });
+    return Response.json({ data});
   } catch (err) {
     return Response.json({ error: "error occurred" }, { status: 500 });
   }
