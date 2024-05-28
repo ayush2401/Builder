@@ -54,33 +54,88 @@ const CropOutputTable = ({ requirements, data }) => {
   const convertAndCompare = (x, y) => {
     return x?.toLowerCase() === y?.toLowerCase();
   };
-  const getSystemForHarvesting = (cropName, total) => {
-    // Logic to get list of system available for harvesting "cropName" for the required quantity "total"
+
+  const convertAndContradict = (x, y) => {
+    return x?.toLowerCase() != y?.toLowerCase();
+  };
+
+  const convertToISODate = (dateStr) => {
+    const [day, month, year] = dateStr.split("/");
+    return `${year}-${month}-${day}`;
+  };
+
+  const checkExistence = (value, array1, array2 = null) => {
+    if (array2 == null) {
+      return !array1.includes(value);
+    } else {
+      return !array1.includes(value) && !array2.includes(value);
+    }
+  };
+
+  const getSystemForHarvesting = (cropName, required) => {
+    // Logic to get list of system available for harvesting "cropName" for the required quantity "required"
     const selectedCrop = data
       .filter((cropData) => {
         return (
           convertAndCompare(cropData?.Crop_type, cropName) &&
-          convertAndCompare(cropData?.Plant_Status, "Completed") &&
-          convertAndCompare(cropData?.Act_Status, "Final harvest")
+          convertAndContradict(cropData?.Plant_Status, "Completed") &&
+          convertAndContradict(cropData?.Act_Status, "Seeded")
         );
-      }).sort((a, b) => a["No. of sponges"] - b["No. of sponges"])
-      
+      })
+      .sort((a, b) => {
+        const dateA = convertToISODate(a["Est_harvest date"]);
+        const dateB = convertToISODate(b["Est_harvest date"]);
+        const comparator = dateA.localeCompare(dateB);
+        return comparator == 0 ? a["No. of sponges"] - b["No. of sponges"] : comparator;
+      });
 
-    if(cropName == "Rocket" ) {
-      console.log(selectedCrop)
-    }
+    let bufferNeeded = Math.ceil(required * 0.25);
+    let fullfillBasicRequirement = true;
+    let mainSystemDone = false;
     const selectedSystems = selectedCrop.reduce(
       (output, cropData) => {
-        if (total > 20) {
-          total -= cropData["No. of sponges"];
-          output["populated"] = output["populated"] + cropData["No. of sponges"];
-          output["systems"] = [...output["systems"], cropData["Location"]];
+        const available = cropData["No. of sponges"];
+        console.log(cropName, required, available);
+
+        if (required >= available && fullfillBasicRequirement) {
+          // We have more requirement than available plants so we will add it into the main system list.
+          if (checkExistence(cropData["Location"], output["systems"], output["bufferSystems"])) {
+            required -= available;
+            output["populated"] = output["populated"] + Number(available);
+            output["systems"] = [...output["systems"], cropData["Location"]];
+          }
+        } else {
+          fullfillBasicRequirement = false;
+          // We have more plants available now...
+          // We will check difference between required and available if it is minor we can add the plant to "main system" otherwise "buffer"
+          if (required > 0) {
+            // If still we need atleast 50% of the plants available we can add that to main system list.
+            if (required >= Math.floor(available * 0.5) && !mainSystemDone) {
+              if (checkExistence(cropData["Location"], output["systems"], output["bufferSystems"])) {
+                required -= available;
+                required += bufferNeeded;
+                bufferNeeded = 0;
+                mainSystemDone = true;
+                output["populated"] = output["populated"] + Number(available);
+                output["systems"] = [...output["systems"], cropData["Location"]];
+              }
+            } else {
+              // If we need less than 50% that means cutting the plant would cause some wastage so we can add that to buffer.
+              if (checkExistence(cropData["Location"], output["systems"], output["bufferSystems"])) {
+                required -= available;
+                required += bufferNeeded;
+                bufferNeeded = 0;
+                output["populatedBuffer"] = output["populatedBuffer"] + Number(available);
+                output["bufferSystems"] = [...output["bufferSystems"], cropData["Location"]];
+              }
+            }
+          }
         }
 
         return output;
       },
-      { populated: 0, systems: [] }
-    ).systems;
+      { populated: 0, populatedBuffer: 0, systems: [], bufferSystems: [] }
+    );
     return selectedSystems;
   };
 
@@ -108,6 +163,9 @@ const CropOutputTable = ({ requirements, data }) => {
           <TableColumn key="plant-wt">Estd. plant weight (g)</TableColumn>
           <TableColumn key="plant-needed">Estd. plants needed</TableColumn>
           <TableColumn key="system">System</TableColumn>
+          <TableColumn key="total-without-buffer">Total plants (Actual)</TableColumn>
+          <TableColumn key="bufferSystems">Buffer systems</TableColumn>
+          <TableColumn key="total-with-buffer">Total plants (Actual + Buffer)</TableColumn>
         </TableHeader>
         <TableBody>
           {result.map((crop, index) => (
@@ -116,7 +174,11 @@ const CropOutputTable = ({ requirements, data }) => {
               <TableCell>{crop.cropTotalWeightNeeded}</TableCell>
               <TableCell>{crop.cropWeight}</TableCell>
               <TableCell>{crop.cropTotalQuantityNeeded}</TableCell>
-              <TableCell>{crop.cropSystemPlanted.reduce((systems, x) => (systems += x + ", "), "")}</TableCell>
+              <TableCell>{crop.cropSystemPlanted?.systems?.reduce((systems, x) => (systems += x + ", "), "")}</TableCell>
+              <TableCell>{crop.cropSystemPlanted?.populated}</TableCell>
+              <TableCell>{crop.cropSystemPlanted?.bufferSystems?.reduce((systems, x) => (systems += x + ", "), "")}</TableCell>
+              <TableCell>{crop.cropSystemPlanted?.populated + crop.cropSystemPlanted?.populatedBuffer}</TableCell>
+
             </TableRow>
           ))}
         </TableBody>

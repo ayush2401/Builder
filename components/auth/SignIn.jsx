@@ -2,6 +2,7 @@
 
 import { Flex, Box, FormControl, FormLabel, Input, Checkbox, Stack, Link, Button, Heading, Text } from "@chakra-ui/react";
 import { useColorModeValue } from '@chakra-ui/react';
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 
@@ -9,6 +10,11 @@ export default function SignIn() {
 
   const [email , setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    router.push('/dashboard');
+  }
 
   return (
     <Flex minH={"100vh"} align={"center"} justify={"center"} bg={useColorModeValue("gray.50", "gray.800")}>
@@ -35,6 +41,8 @@ export default function SignIn() {
                 <Link color={"black"}>Forgot password?</Link>
               </Stack>
               <Button
+               loadingText="Logging in..."
+                onClick={handleLogin}
                 bg={"green.300"}
                 color={"white"}
                 _hover={{
