@@ -31,7 +31,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
     >
       <IconButton display={{ base: "flex", md: "none" }} onClick={onOpen} variant="outline" aria-label="open menu" icon={<FiMenu />} />
 
-      <Text display={{ base: "flex", md: "none" }} fontSize="2xl" fontFamily={"Times New Romna"} fontWeight="bold">
+      <Text display={{ base: "flex", md: "none" }} fontSize="2xl" fontWeight="bold">
         GREENHOOD
       </Text>
 
