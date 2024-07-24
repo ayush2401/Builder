@@ -41,19 +41,41 @@ const cropOptions = [
   { value: "F1 Choy Sum", label: "F1 Choy Sum" },
 ];
 
-const activityStatusOptions = {
-  Seeding: ["Seeded"],
-  Transplanting: ["Transplanting"],
-  Harvesting: ["First harvest", "Second harvest", "Third harvest"],
-  Throwing: ["Good", "Bad"],
-};
+const harvestingStatusOptions = [
+  { value: 0, label: "First harvest" },
+  { value: 1, label: "Second harvest" },
+  { value: 2, label: "Third harvest" },
+];
 
-const ActivityEntryTable = ({ activityType, activityDate, populatedData, setPopulatedData }) => {
+const thorwingStatusOptions = [
+  { value: 0, label: "Good" },
+  { value: 1, label: "Bad" },
+];
+
+const transplantLocation = [
+  { value: "E11", label: "E11" },
+  { value: "E12", label: "E12" },
+  { value: "E13", label: "E13" },
+];
+
+const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, database }) => {
   const rows = 10;
 
   const [error, setError] = useState(-1);
   const [loading, setLoading] = useState(Array(rows).fill(false));
-  const [options, setOptions] = useState({ Crop: cropOptions });
+  const [options, setOptions] = useState({
+    Crop: cropOptions,
+    Status: activityType == "Harvesting" ? harvestingStatusOptions : thorwingStatusOptions,
+    Location: transplantLocation,
+  });
+
+  useEffect(() => {
+    if (activityType == "Harvesting") {
+      setOptions((prev) => ({ ...prev, Status: harvestingStatusOptions }));
+    } else {
+      setOptions((prev) => ({ ...prev, Status: thorwingStatusOptions }));
+    }
+  }, [activityType]);
 
   const handleAddValue = (e, rowIndex) => {
     const mandatoryCondition =
@@ -77,19 +99,68 @@ const ActivityEntryTable = ({ activityType, activityDate, populatedData, setPopu
 
     setError(-1);
     if (rowIndex < populatedData.length) {
-      setPopulatedData((prev) => prev.map((_, index) => (index == rowIndex ? { ..._, [e.target.name]: e.target.value } : _)));
+      setPopulatedData((prev) =>
+        prev.map((_, index) => {
+          if (index == rowIndex) {
+            let updatedRow = { ..._, [e.target.name]: e.target.value };
+            if (activityType === "Harvesting" && e.target.name === "Location") {
+              const selectedItem = database.filter((x) => x[2] == updatedRow["Crop"] && x[13] === "Transplanted" && x[9] === e.target.value)[0];
+              if (selectedItem) {
+                updatedRow["Seed date"] = formatDate(selectedItem[6]);
+              }
+            }
+            return updatedRow;
+          } else {
+            return _;
+          }
+        })
+      );
     } else {
-      setPopulatedData((prev) => [...prev, { [e.target.name]: e.target.value }]);
+      let newRow = { [e.target.name]: e.target.value };
+
+      // Set Seed date when Location is selected for Harvesting
+      if (activityType === "Harvesting" && e.target.name === "Location") {
+        const selectedItem = database.filter((x) => x[2] == updatedRow["Crop"] && x[13] === "Transplanted" && x[9] === e.target.value)[0];
+        if (selectedItem) {
+          newRow["Seed date"] = formatDate(selectedItem[6]);
+        }
+      }
+      setPopulatedData((prev) => [...prev, newRow]);
     }
   };
 
-  const fetchSeedDates = (colIndex, rowIndex) => {
+  function formatDate(date) {
+    var d = new Date(date),
+      month = "" + (d.getMonth() + 1),
+      day = "" + d.getDate(),
+      year = d.getFullYear();
+
+    if (month.length < 2) month = "0" + month;
+    if (day.length < 2) day = "0" + day;
+
+    return [year, month, day].join("-");
+  }
+
+  const fetchDropdownData = (colIndex, rowIndex, crop) => {
     // Write actual logic to fetch seed dates corresponding to a particular crop
     if (activityType == "Transplanting" && colIndex == 0) {
       setLoading((prev) => prev.map((_, i) => i == rowIndex));
+      const selectedItems = database.filter((x) => x[2] == crop && x[13] === "Seeded");
       setOptions((prev) => ({
         ...prev,
-        "Seed date": [{ value: new Date().toLocaleDateString(), label: new Date().toLocaleDateString() }],
+        "Seed date": selectedItems.map((x) => ({ value: formatDate(x[6]), label: formatDate(x[6]) })),
+      }));
+      setTimeout(() => {
+        setLoading((prev) => prev.map((_) => false));
+      }, 3000);
+    }
+
+    if (activityType == "Harvesting" && colIndex == 0) {
+      setLoading((prev) => prev.map((_, i) => i == rowIndex));
+      const selectedItems = database.filter((x) => x[2] == crop && x[13] === "Transplanted");
+      setOptions((prev) => ({
+        ...prev,
+        Location: selectedItems.map((x) => ({ value: x[9], label: x[9] })),
       }));
       setTimeout(() => {
         setLoading((prev) => prev.map((_) => false));
@@ -119,11 +190,11 @@ const ActivityEntryTable = ({ activityType, activityDate, populatedData, setPopu
               <Tr key={rowIndex}>
                 {columns.map((column, colIndex) => (
                   <Td key={colIndex}>
-                    {colIndex <= 1 ? (
+                    {[0, 1, 2, 6].includes(colIndex) && !isColumnDisabled(colIndex) ? (
                       <AutoComplete
                         onChange={(e) =>
                           Promise.resolve(handleAddValue({ target: { name: column.name, value: e } }, rowIndex)).then(() =>
-                            fetchSeedDates(colIndex, rowIndex)
+                            fetchDropdownData(colIndex, rowIndex, e)
                           )
                         }
                         // value={populatedData.length > rowIndex && populatedData[rowIndex]['crop'] ? populatedData[rowIndex]['crop'] : ""}
@@ -144,7 +215,7 @@ const ActivityEntryTable = ({ activityType, activityDate, populatedData, setPopu
                         />
                         <AutoCompleteList>
                           {options[column.name]?.map((option) => (
-                            <AutoCompleteItem key={option.value} value={option.label} textTransform="capitalize">
+                            <AutoCompleteItem key={option.value} value={option.value} textTransform="capitalize">
                               {option.label}
                             </AutoCompleteItem>
                           ))}

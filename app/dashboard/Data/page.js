@@ -13,49 +13,77 @@ const page = () => {
   const [preview, setPreview] = useState([]);
 
   const updateGoogleSheet = async () => {
-    try {
-      onOpen();
-      const res = await fetch("http://localhost:3000/api/database/update", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ payload: preview }),
-      });
-      if (!res.ok) {
-        throw new Error("Failed to fetch data");
-      }
-    } catch (err) {
-      console.log(err);
-    } finally {
-      setPopulatedData([]);
-      onClose();
+    onOpen();
+    const res = await fetch("http://localhost:3000/api/database/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ payload: preview }),
+    });
+
+    if (res.ok) {
+      fetchActivities().then(() => setPopulatedData([]));
     }
+    onClose();
   };
 
   const activityOptions = ["Seeding", "Transplanting", "Harvesting", "Throwing"];
   const [activityType, setActivityType] = useState("Seeding");
   const [activityDate, setActivityDate] = useState(new Date());
   const [database, setDatabase] = useState([]);
-
-  const handleActivityNo = () => {
-    return "";
+  const cropOptions = [
+    { value: "Tuscan Kale", label: "Tuscan Kale" },
+    { value: "Rocket", label: "Rocket" },
+    { value: "Mizuna", label: "Mizuna" },
+    { value: "Olmetie Rz", label: "Olmetie Rz" },
+    { value: "Archival Rz", label: "Archival Rz" },
+    { value: "Mondai Rz", label: "Mondai Rz" },
+    { value: "Basil", label: "Basil" },
+    { value: "Bayam", label: "Bayam" },
+    { value: "Nai bai", label: "Nai bai" },
+    { value: "Hyb spl bok choy", label: "Hyb spl bok choy" },
+    { value: "F1 Choy Sum", label: "F1 Choy Sum" },
+  ];
+  const activityStatusOptions = {
+    Seeding: ["Seeded"],
+    Transplanting: ["Transplanted"],
+    Harvesting: ["First harvest", "Second harvest", "Third harvest"],
+    Throwing: ["Good", "Bad"],
   };
 
-  const handlePlantId = () => {
-    return "";
+  function formatDate(date) {
+    var d = new Date(date),
+      month = "" + (d.getMonth() + 1),
+      day = "" + d.getDate(),
+      year = d.getFullYear();
+
+    month = month.padStart(2, "0");
+    day = day.padStart(2, "0");
+
+    return [year, month, day].join("");
+  }
+
+  const handleActivityNo = (position) => {
+    return database.length + position + 1;
   };
 
-  const handleActivityId = () => {
-    return "";
+  const handlePlantId = (item) => {
+    let date = handleSeedDate(item);
+    date = formatDate(date);
+    return `${date}-${cropOptions.map((x) => x.value).indexOf(item["Crop"]) + 1}${item["Crop"].slice(0, 3)}`;
+  };
+
+  const handleActivityId = (item) => {
+    return handlePlantId(item) + `-${Object.keys(activityStatusOptions).indexOf(activityType) + 1}`;
   };
 
   const handleSeedDate = (item) => {
     return item["Seed date"] || activityDate;
   };
 
-  const handleEstHarvestDate = () => {
-    let date = new Date(activityDate);
+  const handleEstHarvestDate = (item) => {
+    let date = new Date(handleSeedDate(item));
     date.setDate(date.getDate() + 10);
 
     // Format the date to yyyy-mm-dd
@@ -67,47 +95,56 @@ const page = () => {
   };
 
   const handleLocation = (item) => {
-    return item["Location"] || "";
+    return item["Location"] || "Nursery";
   };
 
-  const handleWtBeforeQc = () => {
-    return activityType !== "Harvesting" ? 0 : 100;
+  const handleWtBeforeQc = (item) => {
+    return item["Wt. before qc"] || 0;
   };
 
-  const handleWeightAfterQc = () => {
-    return activityType !== "Harvesting" ? 0 : 100;
+  const handleWeightAfterQc = (item) => {
+    return item["Wt. after qc"] || 0;
   };
 
-  const handleActivityStatus = () => {
-    return "";
+  const handleActivityStatus = (item) => {
+    return activityStatusOptions[activityType][item["Status"] || 0];
   };
 
   const handlePlantStatus = (item) => {
-    return item["Status"] || activityType;
+    return activityStatusOptions[activityType][item["Status"] || 0];
+  };
+
+  const handlePlantWeight = (item) => {
+    return 0;
   };
 
   const populateData = async () => {
-    const dummyPreview = []
+    if (!activityDate || !activityType) {
+      alert("Activity Date and Type cannot be blank.");
+      return;
+    }
+
+    const dummyPreview = [];
     populatedData.forEach((item, index) => {
       const row = [];
-      row.push(handleActivityNo());
-      row.push(handlePlantId());
+      row.push(handleActivityNo(index));
+      row.push(handlePlantId(item));
       row.push(item["Crop"]);
-      row.push(handleActivityId());
+      row.push(handleActivityId(item));
       row.push(activityType);
       row.push(activityDate);
       row.push(handleSeedDate(item));
-      row.push(handleEstHarvestDate());
+      row.push(handleEstHarvestDate(item));
       row.push(item["No of sponges"]);
       row.push(handleLocation(item));
-      row.push(handleWtBeforeQc());
-      row.push(handleWeightAfterQc());
-      row.push(handleActivityStatus());
+      row.push(handleWtBeforeQc(item));
+      row.push(handleWeightAfterQc(item));
+      row.push(handleActivityStatus(item));
       row.push(handlePlantStatus(item));
-      row.push("wt/plant");
-      dummyPreview.push(row)
+      row.push(handlePlantWeight(item));
+      dummyPreview.push(row);
     });
-    setPreview(dummyPreview)
+    setPreview(dummyPreview);
   };
 
   const fetchActivities = async () => {
@@ -132,12 +169,7 @@ const page = () => {
           <Input required type="date" bg="#fff" value={activityDate} onChange={(e) => setActivityDate(e.target.value)} />
         </Box>
       </Flex>
-      <ActivitiyEntryTable
-        activityType={activityType}
-        activityDate={activityDate}
-        populatedData={populatedData}
-        setPopulatedData={setPopulatedData}
-      />
+      <ActivitiyEntryTable activityType={activityType} populatedData={populatedData} setPopulatedData={setPopulatedData} database={database} />
       <Button colorScheme="teal" onClick={populateData}>
         Lookup
       </Button>
