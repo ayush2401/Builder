@@ -20,7 +20,7 @@ export async function getGoogleSheetData() {
     const sheets = google.sheets({ version: "v4", auth: jwt });
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.SPREADSHEET_ID,
-      range: "Activities",
+      range: "TestActivities",
       valueRenderOption: "FORMATTED_VALUE",
     });
 

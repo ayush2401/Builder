@@ -26,7 +26,7 @@ const CropOutputTable = ({ requirements, data }) => {
       cropTotalWeightNeeded: 0,
       cropWeight: crop.cropWeight,
       cropTotalQuantityNeeded: 0,
-      cropSystemPlanted: [],
+      cropSystemPlanted: { populated: 0, populatedBuffer: 0, systems: [], bufferSystems: [] },
     };
   });
 
@@ -168,7 +168,7 @@ const CropOutputTable = ({ requirements, data }) => {
           <TableColumn key="total-with-buffer">Total plants (Actual + Buffer)</TableColumn>
         </TableHeader>
         <TableBody>
-          {result.map((crop, index) => (
+          {result?.map((crop, index) => (
             <TableRow key={crop.cropKey}>
               <TableCell>{crop.cropName}</TableCell>
               <TableCell>{crop.cropTotalWeightNeeded}</TableCell>
