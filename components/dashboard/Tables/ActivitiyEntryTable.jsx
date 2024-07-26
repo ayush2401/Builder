@@ -99,8 +99,8 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
 
     setError(-1);
     if (rowIndex < populatedData.length) {
-      setPopulatedData((prev) =>
-        prev.map((_, index) => {
+      setPopulatedData(
+        populatedData.map((_, index) => {
           if (index == rowIndex) {
             let updatedRow = { ..._, [e.target.name]: e.target.value };
             if (activityType === "Harvesting" && e.target.name === "Location") {
@@ -125,7 +125,7 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
           newRow["Seed date"] = formatDate(selectedItem[6]);
         }
       }
-      setPopulatedData((prev) => [...prev, newRow]);
+      setPopulatedData([...populatedData, newRow]);
     }
   };
 

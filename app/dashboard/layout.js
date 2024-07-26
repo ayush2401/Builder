@@ -2,8 +2,8 @@
 
 import React from "react";
 import { Box, useColorModeValue, Drawer, DrawerContent, useDisclosure } from "@chakra-ui/react";
-import SidebarContent from "@/components/dashboard/SidebarContent";
-import MobileNav from "@/components/dashboard/MobileNav";
+import SidebarContent from "@/components/dashboard/Sidebar/SidebarContent";
+import MobileNav from "@/components/dashboard/Navigation/MobileNav";
 
 export default function App({ children }) {
   const { isOpen, onOpen, onClose } = useDisclosure();

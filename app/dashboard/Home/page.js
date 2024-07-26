@@ -1,5 +1,5 @@
 import React from "react";
-import CropComputation from "@/components/dashboard/CropComputation";
+import CropComputation from "@/components/dashboard/Home/CropComputation";
 
 const page = async () => {
   async function fetchData() {

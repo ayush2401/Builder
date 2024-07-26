@@ -1,16 +1,63 @@
 "use client";
 
-import ActivitiyEntryTable from "@/components/dashboard/ActivitiyEntryTable";
-import ReviewTable from "@/components/dashboard/ReviewTable";
-import SelectSelector from "@/components/dashboard/Select";
-import { Box, Button, Flex, FormControl, Grid, GridItem, Input, Stack, Text, VStack } from "@chakra-ui/react";
+import ActivitiyEntryTable from "@/components/dashboard/Tables/ActivitiyEntryTable";
+import ReviewTable from "@/components/dashboard/Tables/ReviewTable";
+import SelectSelector from "@/components/dashboard/Dropdowns/Select";
+import { Box, Button, Flex, Input, Text, VStack } from "@chakra-ui/react";
 import { Spinner, useDisclosure } from "@nextui-org/react";
 import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { setPopulatedData, setActivityDate, setActivityType } from "@/lib/slices/dashboardSlice";
 
 const page = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [populatedData, setPopulatedData] = useState([]);
+  const populatedData = useSelector((state) => state.dashboard.populatedData);
+  const activityType = useSelector((state) => state.dashboard.activityType);
+  const activityDate = useSelector((state) => state.dashboard.activityDate);
+  const dispatch = useDispatch();
+
   const [preview, setPreview] = useState([]);
+
+  const updateCropsWithPlantStatus = async (plantsWithIdAndStatus) => {
+    const headers = database[0];
+    const plantIdIndex = headers.indexOf("PlantID");
+    const plantStatusIndex = headers.indexOf("Plant_Status");
+
+    if (plantIdIndex === -1 || plantStatusIndex === -1) {
+      throw new Error("plantId or plant_status column not found");
+    }
+
+    const rowsToUpdate = database
+      .slice(1)
+      .map((row, index) => {
+        if (Object.keys(plantsWithIdAndStatus).includes(row[plantIdIndex])) {
+          row[plantStatusIndex] = plantsWithIdAndStatus[row[plantIdIndex]];
+          return {
+            rowIndex: index + 1, // Skip header row
+            rowData: row,
+          };
+        }
+        return null;
+      })
+      .filter((row) => row !== null);
+
+    if (rowsToUpdate.length === 0) {
+      console.log("No matching rows found");
+      return;
+    }
+
+    const response = await fetch("http://localhost:3000/api/database/update/row", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ payload: rowsToUpdate }),
+    });
+
+    if (response.ok) {
+      alert("Data Updated successfully");
+    }
+  };
 
   const updateGoogleSheet = async () => {
     onOpen();
@@ -23,14 +70,27 @@ const page = () => {
     });
 
     if (res.ok) {
-      fetchActivities().then(() => setPopulatedData([]));
+      await fetchActivities()
+        .then(async () => {
+          if (["Harvesting", "Transplanting", "Throwing"].includes(activityType)) {
+            const plantsWithIdAndStatus = preview.reduce((data, item) => {
+              data[item[1]] = item[13];
+              return data;
+            }, {});
+            await updateCropsWithPlantStatus(plantsWithIdAndStatus);
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+        })
+        .finally(() => {
+          dispatch(setPopulatedData([]));
+          onClose();
+        });
     }
-    onClose();
   };
 
   const activityOptions = ["Seeding", "Transplanting", "Harvesting", "Throwing"];
-  const [activityType, setActivityType] = useState("Seeding");
-  const [activityDate, setActivityDate] = useState(new Date());
   const [database, setDatabase] = useState([]);
   const cropOptions = [
     { value: "Tuscan Kale", label: "Tuscan Kale" },
@@ -150,7 +210,7 @@ const page = () => {
   const fetchActivities = async () => {
     const res = await fetch("http://localhost:3000/api/database");
     const data = await res.json();
-    setDatabase(data.data.slice(1));
+    setDatabase(data.data);
   };
 
   useEffect(() => {
@@ -162,14 +222,24 @@ const page = () => {
       <Flex gap={4} wrap={"wrap"}>
         <Box display="flex" alignItems={"center"} gap="10px">
           <Text whiteSpace={"nowrap"}>Activity type:</Text>
-          <SelectSelector options={activityOptions} state={activityType} setState={setActivityType}></SelectSelector>
+          <SelectSelector
+            options={activityOptions}
+            state={activityType}
+            setState={(val) => dispatch(setActivityType(val))}
+            setPopulatedData={(val) => dispatch(setPopulatedData(val))}
+          ></SelectSelector>
         </Box>
         <Box display="flex" alignItems={"center"} gap="10px">
           <Text whiteSpace={"nowrap"}>Activity Date:</Text>
-          <Input required type="date" bg="#fff" value={activityDate} onChange={(e) => setActivityDate(e.target.value)} />
+          <Input required type="date" bg="#fff" value={activityDate} onChange={(e) => dispatch(setActivityDate(e.target.value))} />
         </Box>
       </Flex>
-      <ActivitiyEntryTable activityType={activityType} populatedData={populatedData} setPopulatedData={setPopulatedData} database={database} />
+      <ActivitiyEntryTable
+        activityType={activityType}
+        populatedData={populatedData}
+        setPopulatedData={(val) => dispatch(setPopulatedData(val))}
+        database={database}
+      />
       <Button colorScheme="teal" onClick={populateData}>
         Lookup
       </Button>

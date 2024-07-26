@@ -1,5 +1,5 @@
 import React from "react";
-import NavItem from "./NavItem";
+import NavItem from "../Navigation/NavItem";
 import { Box, CloseButton, Flex, useColorModeValue, Text, Avatar } from "@chakra-ui/react";
 import { FiHome, FiTrendingUp, FiCompass, FiStar, FiSettings } from "react-icons/fi";
 import Image from "next/image";

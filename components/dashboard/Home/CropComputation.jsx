@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 
-import CropInputTable from "@/components/dashboard/CropInputTable";
-import CropOutputTable from "@/components/dashboard/CropOutputTable";
+import CropInputTable from "@/components/dashboard/Tables/CropInputTable";
+import CropOutputTable from "@/components/dashboard/Tables/CropOutputTable";
 import { Flex } from "@chakra-ui/react";
 
 const CropComputation = ({ data }) => {

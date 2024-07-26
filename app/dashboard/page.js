@@ -1,5 +1,5 @@
 import React from "react";
-import ActivityTable from "@/components/dashboard/Table";
+import ActivityTable from "@/components/dashboard/Tables/Table";
 
 async function getData() {
   const res = await fetch("http://localhost:3000/api/database");
