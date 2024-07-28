@@ -3,7 +3,7 @@ import React from "react";
 
 const NavItem = ({ icon, children, ...rest }) => {
   return (
-    <Link href={`/dashboard/${children}`} style={{ textDecoration: "none" }} _focus={{ boxShadow: "none" }}>
+    <Link href={`/dashboard/${children.toLowerCase()}`} style={{ textDecoration: "none" }} _focus={{ boxShadow: "none" }}>
       <Flex
         align="center"
         p="4"

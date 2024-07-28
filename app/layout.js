@@ -3,6 +3,10 @@ import "./globals.css";
 import { NextUIProvider } from "@nextui-org/react";
 import { ChakraProvider } from "@chakra-ui/react";
 import { StoreProvider } from "@/lib/Provider";
+import { ThemeProvider } from "@mui/material/styles";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
+import theme from "@/lib/Themes/themes";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {

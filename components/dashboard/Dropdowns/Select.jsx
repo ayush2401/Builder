@@ -1,21 +1,23 @@
 import React from "react";
-import { Select } from "@chakra-ui/react";
+import { Select, SelectItem } from "@nextui-org/react";
 
 const SelectSelector = ({ options, state, setState, setPopulatedData }) => {
   return (
     <Select
-      value={state}
+      selectedKeys={[state]}
+      isRequired
+      variant={"underlined"}
+      className="max-w-lg"
+      label="Select an activity"
       onChange={(e) => {
         setState(e.target.value);
         setPopulatedData([]);
       }}
-      bg={"white"}
-      variant="outline"
     >
-      {options?.map((item) => (
-        <option key={item} value={item}>
-          {item}
-        </option>
+      {options.map((x) => (
+        <SelectItem key={x} value={x}>
+          {x}
+        </SelectItem>
       ))}
     </Select>
   );

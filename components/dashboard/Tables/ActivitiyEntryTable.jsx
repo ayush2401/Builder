@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Table, Thead, Tbody, Tr, Th, Td, Input, Box, ChakraProvider, extendTheme } from "@chakra-ui/react";
-import { AutoComplete, AutoCompleteInput, AutoCompleteItem, AutoCompleteList } from "@choc-ui/chakra-autocomplete";
+import { Table, Thead, Tbody, Tr, Th, Td, Box, ChakraProvider, extendTheme } from "@chakra-ui/react";
+import { Input } from "@nextui-org/react";
+import AutoCompleteInputDropdown from "../Data/AutoCompleteDropdown";
 
 // Custom theme
 const theme = extendTheme({
@@ -63,18 +64,24 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
 
   const [error, setError] = useState(-1);
   const [loading, setLoading] = useState(Array(rows).fill(false));
-  const [options, setOptions] = useState({
-    Crop: cropOptions,
-    Status: activityType == "Harvesting" ? harvestingStatusOptions : thorwingStatusOptions,
-    Location: transplantLocation,
-  });
+  const [options, setOptions] = useState(
+    Array(rows).fill({
+      Crop: cropOptions,
+      Status: activityType == "Harvesting" ? harvestingStatusOptions : thorwingStatusOptions,
+      Location: transplantLocation,
+      "Seed date": [],
+    })
+  );
 
   useEffect(() => {
-    if (activityType == "Harvesting") {
-      setOptions((prev) => ({ ...prev, Status: harvestingStatusOptions }));
-    } else {
-      setOptions((prev) => ({ ...prev, Status: thorwingStatusOptions }));
-    }
+    setOptions(
+      Array(rows).fill({
+        Crop: cropOptions,
+        Status: activityType == "Harvesting" ? harvestingStatusOptions : thorwingStatusOptions,
+        Location: transplantLocation,
+        "Seed date": [],
+      })
+    );
   }, [activityType]);
 
   const handleAddValue = (e, rowIndex) => {
@@ -89,12 +96,12 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
       } else {
         setError(populatedData.length - 1);
       }
-      return;
+      throw Error("Enter data on previous rows");
     }
 
     if (rowIndex == populatedData.length && !mandatoryCondition) {
       setError(populatedData.length - 1);
-      return;
+      throw Error("Enter data on previous rows");
     }
 
     setError(-1);
@@ -146,10 +153,12 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
     if (activityType == "Transplanting" && colIndex == 0) {
       setLoading((prev) => prev.map((_, i) => i == rowIndex));
       const selectedItems = database.filter((x) => x[2] == crop && x[13] === "Seeded");
-      setOptions((prev) => ({
-        ...prev,
-        "Seed date": selectedItems.map((x) => ({ value: formatDate(x[6]), label: formatDate(x[6]) })),
-      }));
+      setOptions((prev) =>
+        prev.map((_, i) =>
+          i == rowIndex ? { ..._, "Seed date": selectedItems.map((x) => ({ value: formatDate(x[6]), label: formatDate(x[6]) })) } : _
+        )
+      );
+
       setTimeout(() => {
         setLoading((prev) => prev.map((_) => false));
       }, 3000);
@@ -158,10 +167,8 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
     if (activityType == "Harvesting" && colIndex == 0) {
       setLoading((prev) => prev.map((_, i) => i == rowIndex));
       const selectedItems = database.filter((x) => x[2] == crop && x[13] === "Transplanted");
-      setOptions((prev) => ({
-        ...prev,
-        Location: selectedItems.map((x) => ({ value: x[9], label: x[9] })),
-      }));
+      setOptions((prev) => prev.map((_, i) => (i == rowIndex ? { ..._, Location: selectedItems.map((x) => ({ value: x[9], label: x[9] })) } : _)));
+
       setTimeout(() => {
         setLoading((prev) => prev.map((_) => false));
       }, 3000);
@@ -187,48 +194,32 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
           </Thead>
           <Tbody>
             {[...Array(rows)].map((_, rowIndex) => (
-              <Tr key={rowIndex}>
+              <Tr key={rowIndex} borderColor={"red"}>
                 {columns.map((column, colIndex) => (
-                  <Td key={colIndex}>
+                  <Td key={colIndex} borderColor={error == rowIndex ? "red" : "transparent"}>
                     {[0, 1, 2, 6].includes(colIndex) && !isColumnDisabled(colIndex) ? (
-                      <AutoComplete
-                        onChange={(e) =>
-                          Promise.resolve(handleAddValue({ target: { name: column.name, value: e } }, rowIndex)).then(() =>
-                            fetchDropdownData(colIndex, rowIndex, e)
-                          )
-                        }
-                        // value={populatedData.length > rowIndex && populatedData[rowIndex]['crop'] ? populatedData[rowIndex]['crop'] : ""}
-                        isLoading={loading[rowIndex]}
-                        openOnFocus
-                        isDisabled={isColumnDisabled(colIndex)}
-                      >
-                        <AutoCompleteInput
-                          {...(error == rowIndex && !isColumnDisabled(colIndex) ? { borderBottom: "2px", borderColor: "red.400" } : {})}
-                          variant="flushed"
-                          placeholder={column.name}
-                          sx={{
-                            bg: "transparent",
-                            transition: "all 0.2s",
-                            _hover: { borderColor: "gray.400" },
-                            _focus: { borderColor: "blue.500" },
-                          }}
-                        />
-                        <AutoCompleteList>
-                          {options[column.name]?.map((option) => (
-                            <AutoCompleteItem key={option.value} value={option.value} textTransform="capitalize">
-                              {option.label}
-                            </AutoCompleteItem>
-                          ))}
-                        </AutoCompleteList>
-                      </AutoComplete>
+                      <AutoCompleteInputDropdown
+                        error={error}
+                        options={options[rowIndex][column.name]}
+                        column={column}
+                        handleAddValue={handleAddValue}
+                        fetchDropdownData={fetchDropdownData}
+                        colIndex={colIndex}
+                        rowIndex={rowIndex}
+                        loading={loading[rowIndex]}
+                      />
                     ) : (
                       <Input
                         {...(error == rowIndex && !isColumnDisabled(colIndex) ? { borderBottom: "2px", borderColor: "red.400" } : {})}
                         name={column.name}
-                        onChange={(e) => handleAddValue(e, rowIndex)}
+                        onChange={(e) => {
+                          try {
+                            handleAddValue(e, rowIndex);
+                          } catch (err) {}
+                        }}
                         value={populatedData.length > rowIndex && populatedData[rowIndex][column.name] ? populatedData[rowIndex][column.name] : ""}
                         placeholder={column.name}
-                        variant="flushed"
+                        variant="underlined"
                         isDisabled={isColumnDisabled(colIndex)}
                       />
                     )}

@@ -3,8 +3,8 @@
 import ActivitiyEntryTable from "@/components/dashboard/Tables/ActivitiyEntryTable";
 import ReviewTable from "@/components/dashboard/Tables/ReviewTable";
 import SelectSelector from "@/components/dashboard/Dropdowns/Select";
-import { Box, Button, Flex, Input, Text, VStack } from "@chakra-ui/react";
-import { Spinner, useDisclosure } from "@nextui-org/react";
+import { Box } from "@chakra-ui/react";
+import { Button, useDisclosure, DatePicker } from "@nextui-org/react";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setPopulatedData, setActivityDate, setActivityType } from "@/lib/slices/dashboardSlice";
@@ -46,7 +46,7 @@ const page = () => {
       return;
     }
 
-    const response = await fetch("http://localhost:3000/api/database/update/row", {
+    const response = await fetch("/api/database/update/row", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -61,7 +61,7 @@ const page = () => {
 
   const updateGoogleSheet = async () => {
     onOpen();
-    const res = await fetch("http://localhost:3000/api/database/update", {
+    const res = await fetch("/api/database/update", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -122,6 +122,18 @@ const page = () => {
     day = day.padStart(2, "0");
 
     return [year, month, day].join("");
+  }
+
+  function mergeDate(date) {
+    var d = new Date(date),
+      month = "" + (d.getMonth() + 1),
+      day = "" + d.getDate(),
+      year = d.getFullYear();
+
+    month = month.padStart(2, "0");
+    day = day.padStart(2, "0");
+
+    return [year, month, day].join("-");
   }
 
   const handleActivityNo = (position) => {
@@ -208,7 +220,7 @@ const page = () => {
   };
 
   const fetchActivities = async () => {
-    const res = await fetch("http://localhost:3000/api/database");
+    const res = await fetch("/api/database");
     const data = await res.json();
     setDatabase(data.data);
   };
@@ -218,36 +230,37 @@ const page = () => {
   }, []);
 
   return (
-    <VStack alignItems={"center"} gap="20px">
-      <Flex gap={4} wrap={"wrap"}>
-        <Box display="flex" alignItems={"center"} gap="10px">
-          <Text whiteSpace={"nowrap"}>Activity type:</Text>
-          <SelectSelector
-            options={activityOptions}
-            state={activityType}
-            setState={(val) => dispatch(setActivityType(val))}
-            setPopulatedData={(val) => dispatch(setPopulatedData(val))}
-          ></SelectSelector>
-        </Box>
-        <Box display="flex" alignItems={"center"} gap="10px">
-          <Text whiteSpace={"nowrap"}>Activity Date:</Text>
-          <Input required type="date" bg="#fff" value={activityDate} onChange={(e) => dispatch(setActivityDate(e.target.value))} />
-        </Box>
-      </Flex>
+    <Box display={"flex"} flexDirection={"column"} gap={"20px"}>
+      <Box display="flex" alignItems="center" gap={"20px"}>
+        <SelectSelector
+          options={activityOptions}
+          state={activityType}
+          setState={(val) => dispatch(setActivityType(val))}
+          setPopulatedData={(val) => dispatch(setPopulatedData(val))}
+        ></SelectSelector>
+        <DatePicker
+          isRequired
+          label={"Activity date"}
+          variant={"underlined"}
+          onChange={(e) => {
+            dispatch(setActivityDate(mergeDate(e)));
+          }}
+        />
+      </Box>
       <ActivitiyEntryTable
         activityType={activityType}
         populatedData={populatedData}
         setPopulatedData={(val) => dispatch(setPopulatedData(val))}
         database={database}
       />
-      <Button colorScheme="teal" onClick={populateData}>
-        Lookup
+      <Button className="max-w-lg mx-auto" color="default" variant="bordered" onClick={populateData}>
+        LOOOKUP
       </Button>
       <ReviewTable output={preview} />
-      <Button onClick={updateGoogleSheet} colorScheme="teal" width="180px">
-        {isOpen ? <Spinner size="sm" color="white" /> : "Update google sheet"}
+      <Button className="max-w-xl mx-auto" color="default" variant="bordered" onClick={updateGoogleSheet} isLoading={isOpen}>
+        {isOpen ? "Updating..." : "Update google sheet"}
       </Button>
-    </VStack>
+    </Box>
   );
 };
 
