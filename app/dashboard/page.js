@@ -11,6 +11,7 @@ async function getData() {
 }
 
 export default async function App() {
-  const data = (await getData()).data;
-  return <ActivityTable data={data.slice(0, 200)} />;
+  // const data = (await getData()).data;
+  const data = []
+  return <ActivityTable data={data} />;
 }

@@ -3,6 +3,7 @@ import NavItem from "../Navigation/NavItem";
 import { Box, CloseButton, Flex, useColorModeValue, Text, Avatar } from "@chakra-ui/react";
 import { FiHome, FiTrendingUp, FiCompass, FiStar, FiSettings } from "react-icons/fi";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 const LinkItems = [
   { name: "Home", icon: FiHome },
@@ -12,6 +13,7 @@ const LinkItems = [
   { name: "Settings", icon: FiSettings },
 ];
 const SidebarContent = ({ onClose, ...rest }) => {
+  const pathname = usePathname();
   return (
     <Box
       transition="3s ease"
@@ -24,11 +26,11 @@ const SidebarContent = ({ onClose, ...rest }) => {
       {...rest}
     >
       <Flex h="20" alignItems="center" mx="8" my={4} justifyContent="space-between">
-        <Image priority={true} src={"/greenhood.jpg"} width={150} height={30} className="z-[-1]" alt="Logo"/>
+        <Image priority={true} src={"/greenhood.jpg"} width={150} height={30} className="z-[-1]" alt="Logo" />
         <CloseButton display={{ base: "flex", md: "none" }} onClick={onClose} />
       </Flex>
       {LinkItems.map((link) => (
-        <NavItem key={link.name} icon={link.icon}>
+        <NavItem key={link.name} icon={link.icon} isActive={pathname.includes(link.name.toLowerCase())}>
           {link.name}
         </NavItem>
       ))}

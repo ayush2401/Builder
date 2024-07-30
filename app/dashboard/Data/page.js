@@ -8,133 +8,85 @@ import { Button, useDisclosure, DatePicker } from "@nextui-org/react";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setPopulatedData, setActivityDate, setActivityType } from "@/lib/slices/dashboardSlice";
+import { activityOptions, cropOptions, activityStatusOptions } from "@/lib/constants/crop";
+import { mergeDate, formatDate } from "@/lib/constants/timeFunctions";
+import { fetchDatabase, updateDatabase, updateDatabaseRow } from "@/lib/slices/databaseSlice";
+import CustomButton from "@/components/dashboard/Elements/Button";
 
 const page = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const populatedData = useSelector((state) => state.dashboard.populatedData);
-  const activityType = useSelector((state) => state.dashboard.activityType);
-  const activityDate = useSelector((state) => state.dashboard.activityDate);
+  const { populatedData, activityType, activityDate } = useSelector((state) => state.dashboard);
+  const { database } = useSelector((state) => state.database);
+  const [preview, setPreview] = useState([]);
   const dispatch = useDispatch();
 
-  const [preview, setPreview] = useState([]);
+  const fetchRowsToUpdate = (plantsWithIdAndStatus) => {
+    const plantIds = Object.keys(plantsWithIdAndStatus);
+    if (database.length) {
+      const rows = database
+        .slice(1)
+        .map((row, index) => {
+          let plantIdofRow = row[1];
+          let newRow = [...row];
+          if (plantIds.includes(plantIdofRow)) {
+            newRow[13] = plantsWithIdAndStatus[plantIdofRow];
+            return {
+              rowIndex: index + 1,
+              rowData: newRow,
+            };
+          } else {
+            return null;
+          }
+        })
+        .filter((row) => row != null);
+
+      return rows;
+    }
+    return [];
+  };
 
   const updateCropsWithPlantStatus = async (plantsWithIdAndStatus) => {
-    const headers = database[0];
-    const plantIdIndex = headers.indexOf("PlantID");
-    const plantStatusIndex = headers.indexOf("Plant_Status");
+    try {
+      const headers = database[0];
+      const plantIdIndex = headers.indexOf("PlantID");
+      const plantStatusIndex = headers.indexOf("Plant_Status");
 
-    if (plantIdIndex === -1 || plantStatusIndex === -1) {
-      throw new Error("plantId or plant_status column not found");
-    }
+      if (plantIdIndex === -1 || plantStatusIndex === -1) {
+        throw new Error("plantId or plant_status column not found");
+      }
 
-    const rowsToUpdate = database
-      .slice(1)
-      .map((row, index) => {
-        if (Object.keys(plantsWithIdAndStatus).includes(row[plantIdIndex])) {
-          row[plantStatusIndex] = plantsWithIdAndStatus[row[plantIdIndex]];
-          return {
-            rowIndex: index + 1, // Skip header row
-            rowData: row,
-          };
-        }
-        return null;
-      })
-      .filter((row) => row !== null);
+      const rowsToUpdate = fetchRowsToUpdate(plantsWithIdAndStatus);
+      if (rowsToUpdate.length === 0) {
+        return;
+      }
 
-    if (rowsToUpdate.length === 0) {
-      console.log("No matching rows found");
-      return;
-    }
-
-    const response = await fetch("/api/database/update/row", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ payload: rowsToUpdate }),
-    });
-
-    if (response.ok) {
-      alert("Data Updated successfully");
+      await dispatch(updateDatabaseRow(rowsToUpdate)).unwrap();
+    } catch (err) {
+      console.log(err);
     }
   };
 
   const updateGoogleSheet = async () => {
-    onOpen();
-    const res = await fetch("/api/database/update", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ payload: preview }),
-    });
-
-    if (res.ok) {
-      await fetchActivities()
-        .then(async () => {
-          if (["Harvesting", "Transplanting", "Throwing"].includes(activityType)) {
-            const plantsWithIdAndStatus = preview.reduce((data, item) => {
-              data[item[1]] = item[13];
-              return data;
-            }, {});
-            await updateCropsWithPlantStatus(plantsWithIdAndStatus);
-          }
-        })
-        .catch((err) => {
-          console.log(err);
-        })
-        .finally(() => {
-          dispatch(setPopulatedData([]));
-          onClose();
-        });
+    try {
+      onOpen();
+      const updateResult = await dispatch(updateDatabase(preview)).unwrap();
+      if (updateResult) {
+        await dispatch(fetchDatabase()).unwrap();
+        if (activityType !== "Seeding") {
+          const plantsWithIdAndStatus = preview.reduce((data, item) => {
+            data[item[1]] = item[13];
+            return data;
+          }, {});
+          await updateCropsWithPlantStatus(plantsWithIdAndStatus);
+        }
+        dispatch(setPopulatedData([]));
+        setPreview([]);
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to update the Google Sheet:", error);
     }
   };
-
-  const activityOptions = ["Seeding", "Transplanting", "Harvesting", "Throwing"];
-  const [database, setDatabase] = useState([]);
-  const cropOptions = [
-    { value: "Tuscan Kale", label: "Tuscan Kale" },
-    { value: "Rocket", label: "Rocket" },
-    { value: "Mizuna", label: "Mizuna" },
-    { value: "Olmetie Rz", label: "Olmetie Rz" },
-    { value: "Archival Rz", label: "Archival Rz" },
-    { value: "Mondai Rz", label: "Mondai Rz" },
-    { value: "Basil", label: "Basil" },
-    { value: "Bayam", label: "Bayam" },
-    { value: "Nai bai", label: "Nai bai" },
-    { value: "Hyb spl bok choy", label: "Hyb spl bok choy" },
-    { value: "F1 Choy Sum", label: "F1 Choy Sum" },
-  ];
-  const activityStatusOptions = {
-    Seeding: ["Seeded"],
-    Transplanting: ["Transplanted"],
-    Harvesting: ["First harvest", "Second harvest", "Third harvest"],
-    Throwing: ["Good", "Bad"],
-  };
-
-  function formatDate(date) {
-    var d = new Date(date),
-      month = "" + (d.getMonth() + 1),
-      day = "" + d.getDate(),
-      year = d.getFullYear();
-
-    month = month.padStart(2, "0");
-    day = day.padStart(2, "0");
-
-    return [year, month, day].join("");
-  }
-
-  function mergeDate(date) {
-    var d = new Date(date),
-      month = "" + (d.getMonth() + 1),
-      day = "" + d.getDate(),
-      year = d.getFullYear();
-
-    month = month.padStart(2, "0");
-    day = day.padStart(2, "0");
-
-    return [year, month, day].join("-");
-  }
 
   const handleActivityNo = (position) => {
     return database.length + position + 1;
@@ -219,19 +171,15 @@ const page = () => {
     setPreview(dummyPreview);
   };
 
-  const fetchActivities = async () => {
-    const res = await fetch("/api/database");
-    const data = await res.json();
-    setDatabase(data.data);
-  };
-
   useEffect(() => {
-    fetchActivities();
-  }, []);
+    dispatch(fetchDatabase());
+  }, [dispatch]);
+
+  useEffect(() => {}, [database]);
 
   return (
-    <Box display={"flex"} flexDirection={"column"} gap={"20px"}>
-      <Box display="flex" alignItems="center" gap={"20px"}>
+    <Box display="flex" flexDirection="column" gap="20px">
+      <Box display="flex" alignItems="center" gap="20px">
         <SelectSelector
           options={activityOptions}
           state={activityType}
@@ -240,8 +188,8 @@ const page = () => {
         ></SelectSelector>
         <DatePicker
           isRequired
-          label={"Activity date"}
-          variant={"underlined"}
+          label="Activity date"
+          variant="underlined"
           onChange={(e) => {
             dispatch(setActivityDate(mergeDate(e)));
           }}
@@ -253,13 +201,11 @@ const page = () => {
         setPopulatedData={(val) => dispatch(setPopulatedData(val))}
         database={database}
       />
-      <Button className="max-w-lg mx-auto" color="default" variant="bordered" onClick={populateData}>
-        LOOOKUP
-      </Button>
+      <CustomButton onClick={populateData}>Lookup</CustomButton>
       <ReviewTable output={preview} />
-      <Button className="max-w-xl mx-auto" color="default" variant="bordered" onClick={updateGoogleSheet} isLoading={isOpen}>
+      <CustomButton onClick={updateGoogleSheet} isLoading={isOpen}>
         {isOpen ? "Updating..." : "Update google sheet"}
-      </Button>
+      </CustomButton>
     </Box>
   );
 };

@@ -2,7 +2,7 @@ import { Autocomplete, AutocompleteItem } from "@nextui-org/react";
 import React, { useEffect } from "react";
 import { useSelector } from "react-redux";
 
-const AutoCompleteInputDropdown = ({ error, options, column, handleAddValue, fetchDropdownData, colIndex, rowIndex, loading }) => {
+const AutoCompleteInputDropdown = ({ isDisabled, error, options, column, handleAddValue, fetchDropdownData, colIndex, rowIndex, loading }) => {
   const populatedData = useSelector((state) => state.dashboard.populatedData);
   const populateInput = () => {
     try {
@@ -22,6 +22,7 @@ const AutoCompleteInputDropdown = ({ error, options, column, handleAddValue, fet
   return (
     <>
       <Autocomplete
+        isDisabled={isDisabled}
         selectedKey={populateInput()}
         isRequired
         aria-label={column.name}

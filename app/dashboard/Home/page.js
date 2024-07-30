@@ -20,7 +20,8 @@ const page = async () => {
     return finalData;
   }
 
-  const data = await fetchData();
+  // const data = await fetchData();
+  const data = []
   return (
     <>
       <CropComputation data={data} />

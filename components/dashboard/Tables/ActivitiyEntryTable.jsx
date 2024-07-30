@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Table, Thead, Tbody, Tr, Th, Td, Box, ChakraProvider, extendTheme } from "@chakra-ui/react";
 import { Input } from "@nextui-org/react";
 import AutoCompleteInputDropdown from "../Data/AutoCompleteDropdown";
+import { cropOptions, columns, harvestingStatusOptions, thorwingStatusOptions, transplantLocation } from "@/lib/constants/crop";
+import { mergeDate } from "@/lib/constants/timeFunctions";
 
 // Custom theme
 const theme = extendTheme({
@@ -18,57 +20,17 @@ const theme = extendTheme({
   },
 });
 
-const columns = [
-  { name: "Crop", required: ["Seeding", "Transplanting", "Harvesting"] },
-  { name: "Seed date", required: ["Transplanting"] },
-  { name: "Location", required: ["Transplanting", "Harvesting", "Throwing"] },
-  { name: "No of sponges", required: ["Seeding", "Transplanting", "Harvesting"] },
-  { name: "Wt. before qc", required: ["Harvesting"] },
-  { name: "Wt. after qc", required: ["Harvesting"] },
-  { name: "Status", required: ["Harvesting", "Throwing"] },
-];
-
-const cropOptions = [
-  { value: "Tuscan Kale", label: "Tuscan Kale" },
-  { value: "Rocket", label: "Rocket" },
-  { value: "Mizuna", label: "Mizuna" },
-  { value: "Olmetie Rz", label: "Olmetie Rz" },
-  { value: "Archival Rz", label: "Archival Rz" },
-  { value: "Mondai Rz", label: "Mondai Rz" },
-  { value: "Basil", label: "Basil" },
-  { value: "Bayam", label: "Bayam" },
-  { value: "Nai bai", label: "Nai bai" },
-  { value: "Hyb spl bok choy", label: "Hyb spl bok choy" },
-  { value: "F1 Choy Sum", label: "F1 Choy Sum" },
-];
-
-const harvestingStatusOptions = [
-  { value: 0, label: "First harvest" },
-  { value: 1, label: "Second harvest" },
-  { value: 2, label: "Third harvest" },
-];
-
-const thorwingStatusOptions = [
-  { value: 0, label: "Good" },
-  { value: 1, label: "Bad" },
-];
-
-const transplantLocation = [
-  { value: "E11", label: "E11" },
-  { value: "E12", label: "E12" },
-  { value: "E13", label: "E13" },
-];
-
 const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, database }) => {
   const rows = 10;
 
   const [error, setError] = useState(-1);
   const [loading, setLoading] = useState(Array(rows).fill(false));
+  const [bookedLocations, setBookedLocations] = useState([]);
   const [options, setOptions] = useState(
     Array(rows).fill({
       Crop: cropOptions,
       Status: activityType == "Harvesting" ? harvestingStatusOptions : thorwingStatusOptions,
-      Location: transplantLocation,
+      Location: [],
       "Seed date": [],
     })
   );
@@ -78,11 +40,21 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
       Array(rows).fill({
         Crop: cropOptions,
         Status: activityType == "Harvesting" ? harvestingStatusOptions : thorwingStatusOptions,
-        Location: transplantLocation,
+        Location: [],
         "Seed date": [],
       })
     );
-  }, [activityType]);
+
+    if (activityType == "Transplanting") {
+      setBookedLocations(database.filter((x) => x[13] == "Transplanted" && x[12] == "Transplanted").map((item) => item[getIndexOfField("Location")]));
+    }
+  }, [activityType, database]);
+
+  const getIndexOfField = (field) => {
+    const headers = database[0];
+    const fieldIndex = headers.indexOf(field);
+    return fieldIndex;
+  };
 
   const handleAddValue = (e, rowIndex) => {
     const mandatoryCondition =
@@ -113,7 +85,12 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
             if (activityType === "Harvesting" && e.target.name === "Location") {
               const selectedItem = database.filter((x) => x[2] == updatedRow["Crop"] && x[13] === "Transplanted" && x[9] === e.target.value)[0];
               if (selectedItem) {
-                updatedRow["Seed date"] = formatDate(selectedItem[6]);
+                updatedRow["Seed date"] = mergeDate(selectedItem[6]);
+                setOptions((prev) =>
+                  prev.map((_, i) =>
+                    i == rowIndex ? { ..._, "Seed date": [{ label: updatedRow["Seed date"], value: updatedRow["Seed date"] }] } : _
+                  )
+                );
               }
             }
             return updatedRow;
@@ -129,49 +106,42 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
       if (activityType === "Harvesting" && e.target.name === "Location") {
         const selectedItem = database.filter((x) => x[2] == updatedRow["Crop"] && x[13] === "Transplanted" && x[9] === e.target.value)[0];
         if (selectedItem) {
-          newRow["Seed date"] = formatDate(selectedItem[6]);
+          newRow["Seed date"] = mergeDate(selectedItem[6]);
         }
       }
       setPopulatedData([...populatedData, newRow]);
     }
   };
 
-  function formatDate(date) {
-    var d = new Date(date),
-      month = "" + (d.getMonth() + 1),
-      day = "" + d.getDate(),
-      year = d.getFullYear();
-
-    if (month.length < 2) month = "0" + month;
-    if (day.length < 2) day = "0" + day;
-
-    return [year, month, day].join("-");
-  }
-
   const fetchDropdownData = (colIndex, rowIndex, crop) => {
-    // Write actual logic to fetch seed dates corresponding to a particular crop
+    // Fetch all possible seed dates for the plant to be transplanted
     if (activityType == "Transplanting" && colIndex == 0) {
       setLoading((prev) => prev.map((_, i) => i == rowIndex));
       const selectedItems = database.filter((x) => x[2] == crop && x[13] === "Seeded");
       setOptions((prev) =>
         prev.map((_, i) =>
-          i == rowIndex ? { ..._, "Seed date": selectedItems.map((x) => ({ value: formatDate(x[6]), label: formatDate(x[6]) })) } : _
+          i == rowIndex ? { ..._, "Seed date": selectedItems.map((x) => ({ value: mergeDate(x[6]), label: mergeDate(x[6]) })) } : _
         )
       );
-
-      setTimeout(() => {
-        setLoading((prev) => prev.map((_) => false));
-      }, 3000);
+      setLoading((prev) => prev.map((_) => false));
     }
 
+    // Fetch all possible locations to which the given plant can be transplanted
+    if (activityType == "Transplanting" && colIndex == 1) {
+      setLoading((prev) => prev.map((_, i) => i == rowIndex));
+      const allLocations = transplantLocation();
+      const updatedBookedLocations = [...bookedLocations, populatedData.map((item) => item["Location"])];
+      const availableLocations = allLocations.filter((loc) => !updatedBookedLocations.includes(loc.value));
+      setOptions((prev) => prev.map((_, i) => (i == rowIndex ? { ..._, Location: availableLocations } : _)));
+      setLoading((prev) => prev.map((_) => false));
+    }
+
+    // fetch all possible locations from which the given plant can be Harvested
     if (activityType == "Harvesting" && colIndex == 0) {
       setLoading((prev) => prev.map((_, i) => i == rowIndex));
-      const selectedItems = database.filter((x) => x[2] == crop && x[13] === "Transplanted");
+      const selectedItems = database.filter((x) => x[2] == crop && x[13] === "Transplanted" && x[12] === "Transplanted");
       setOptions((prev) => prev.map((_, i) => (i == rowIndex ? { ..._, Location: selectedItems.map((x) => ({ value: x[9], label: x[9] })) } : _)));
-
-      setTimeout(() => {
-        setLoading((prev) => prev.map((_) => false));
-      }, 3000);
+      setLoading((prev) => prev.map((_) => false));
     }
   };
 
@@ -186,7 +156,7 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
           <Thead bg="gray.50">
             <Tr>
               {columns.map((item, index) => (
-                <Th width={index <= 1 && "18%"} key={index} borderWidth="1px" borderColor="gray.200">
+                <Th width={index <= 1 ? "18%" : "12%"} key={index} borderWidth="1px" borderColor="gray.200">
                   {item.name}
                 </Th>
               ))}
@@ -197,8 +167,9 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
               <Tr key={rowIndex} borderColor={"red"}>
                 {columns.map((column, colIndex) => (
                   <Td key={colIndex} borderColor={error == rowIndex ? "red" : "transparent"}>
-                    {[0, 1, 2, 6].includes(colIndex) && !isColumnDisabled(colIndex) ? (
+                    {[0, 1, 2, 6].includes(colIndex) ? (
                       <AutoCompleteInputDropdown
+                        isDisabled={isColumnDisabled(colIndex)}
                         error={error}
                         options={options[rowIndex][column.name]}
                         column={column}
@@ -210,6 +181,7 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
                       />
                     ) : (
                       <Input
+                        {...(column.name == "No of sponges" ? { type: "number", min: 0, max: 240 } : { type: "text" })}
                         {...(error == rowIndex && !isColumnDisabled(colIndex) ? { borderBottom: "2px", borderColor: "red.400" } : {})}
                         name={column.name}
                         onChange={(e) => {
