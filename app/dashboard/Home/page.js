@@ -1,27 +1,31 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import CropComputation from "@/components/dashboard/Home/CropComputation";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchDatabase } from "@/lib/slices/databaseSlice";
 
 const page = async () => {
-  async function fetchData() {
-    const res = await fetch("http://localhost:3000/api/database");
-    if (!res.ok) {
-      throw new Error("Failed to fetch data");
-    }
-    const data = (await res.json()).data;
-    const rows = data[0];
-    const finalData = data.slice(1).map((item) => {
-      let rowObject = {};
-      rows.forEach((field, index) => {
-        rowObject[field] = item[index];
+  const { database } = useSelector((state) => state.database);
+  const [data, setData] = useState([]);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(fetchDatabase());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (database) {
+      const headers = database[0];
+      const databaseInObject = database.slice(1).map((item) => {
+        return headers.reduce((obj, field) => {
+          obj[field] = item[headers.indexOf(field)];
+          return obj;
+        }, {});
       });
-      return rowObject;
-    });
-
-    return finalData;
-  }
-
-  // const data = await fetchData();
-  const data = []
+      setData(databaseInObject);
+    }
+  }, [database]);
   return (
     <>
       <CropComputation data={data} />

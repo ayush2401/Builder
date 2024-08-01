@@ -1,17 +1,16 @@
-import React from "react";
+"use client";
+
+import React, { useEffect } from "react";
 import ActivityTable from "@/components/dashboard/Tables/Table";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchDatabase } from "@/lib/slices/databaseSlice";
 
-async function getData() {
-  const res = await fetch("http://localhost:3000/api/database");
-  if (!res.ok) {
-    throw new Error("Failed to fetch data");
-  }
+export default function App() {
+  const dispatch = useDispatch();
+  const { database } = useSelector((state) => state.database);
+  useEffect(() => {
+    dispatch(fetchDatabase());
+  }, [dispatch]);
 
-  return res.json();
-}
-
-export default async function App() {
-  // const data = (await getData()).data;
-  const data = []
-  return <ActivityTable data={data} />;
+  return <ActivityTable data={database} />;
 }

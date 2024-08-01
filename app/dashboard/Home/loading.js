@@ -1,4 +1,4 @@
 export default function Loading() {
     // You can add any UI inside Loading, including a Skeleton.
-    return <div>Please wait </div>
+    return <div>Please wait... </div>
   }

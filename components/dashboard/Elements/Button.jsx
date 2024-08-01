@@ -8,6 +8,7 @@ const CustomButton = ({ children, ...rest }) => {
       color="default"
       variant="ghost"
       radius="none"
+      size="lg"
       {...rest}
     >
       {children}

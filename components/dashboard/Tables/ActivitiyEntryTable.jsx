@@ -4,6 +4,7 @@ import { Input } from "@nextui-org/react";
 import AutoCompleteInputDropdown from "../Data/AutoCompleteDropdown";
 import { cropOptions, columns, harvestingStatusOptions, thorwingStatusOptions, transplantLocation } from "@/lib/constants/crop";
 import { mergeDate } from "@/lib/constants/timeFunctions";
+import { useSelector } from "react-redux";
 
 // Custom theme
 const theme = extendTheme({
@@ -20,12 +21,13 @@ const theme = extendTheme({
   },
 });
 
-const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, database }) => {
-  const rows = 10;
-
+const ActivityEntryTable = ({ rows, populatedData, setPopulatedData }) => {
   const [error, setError] = useState(-1);
   const [loading, setLoading] = useState(Array(rows).fill(false));
   const [bookedLocations, setBookedLocations] = useState([]);
+  const { activityType } = useSelector((state) => state.dashboard);
+  const { database } = useSelector((state) => state.database);
+
   const [options, setOptions] = useState(
     Array(rows).fill({
       Crop: cropOptions,
@@ -57,60 +59,46 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
   };
 
   const handleAddValue = (e, rowIndex) => {
-    const mandatoryCondition =
-      populatedData.length > 0
-        ? !columns.some((_, colIndex) => !isColumnDisabled(colIndex) && !populatedData[populatedData.length - 1][_.name])
-        : true;
+    // const mandatoryCondition =
+    //   populatedData.length > 0
+    //     ? !columns.some((_, colIndex) => !isColumnDisabled(colIndex) && !populatedData[populatedData.length - 1][_.name])
+    //     : true;
 
-    if (rowIndex > populatedData.length) {
-      if (mandatoryCondition) {
-        setError(populatedData.length);
-      } else {
-        setError(populatedData.length - 1);
-      }
-      throw Error("Enter data on previous rows");
-    }
+    // if (rowIndex > populatedData.length) {
+    //   if (mandatoryCondition) {
+    //     setError(populatedData.length);
+    //   } else {
+    //     setError(populatedData.length - 1);
+    //   }
+    //   throw Error("Enter data on previous rows");
+    // }
 
-    if (rowIndex == populatedData.length && !mandatoryCondition) {
-      setError(populatedData.length - 1);
-      throw Error("Enter data on previous rows");
-    }
+    // if (rowIndex == populatedData.length && !mandatoryCondition) {
+    //   setError(populatedData.length - 1);
+    //   throw Error("Enter data on previous rows");
+    // }
 
-    setError(-1);
-    if (rowIndex < populatedData.length) {
-      setPopulatedData(
-        populatedData.map((_, index) => {
-          if (index == rowIndex) {
-            let updatedRow = { ..._, [e.target.name]: e.target.value };
-            if (activityType === "Harvesting" && e.target.name === "Location") {
-              const selectedItem = database.filter((x) => x[2] == updatedRow["Crop"] && x[13] === "Transplanted" && x[9] === e.target.value)[0];
-              if (selectedItem) {
-                updatedRow["Seed date"] = mergeDate(selectedItem[6]);
-                setOptions((prev) =>
-                  prev.map((_, i) =>
-                    i == rowIndex ? { ..._, "Seed date": [{ label: updatedRow["Seed date"], value: updatedRow["Seed date"] }] } : _
-                  )
-                );
-              }
+    // setError(-1);
+    const { name, value } = e.target;
+
+    setPopulatedData((prev) =>
+      prev.map((item, index) => {
+        if (index === rowIndex) {
+          const updatedRow = { ...item, [name]: value };
+          if (activityType === "Harvesting" && name === "Location") {
+            const selectedItem = database.filter((x) => x[2] == updatedRow["Crop"] && x[13] === "Transplanted" && x[9] === value)[0];
+            if (selectedItem) {
+              updatedRow["Seed date"] = mergeDate(selectedItem[6]);
+              setOptions((prev) =>
+                prev.map((_, i) => (i == rowIndex ? { ..._, "Seed date": [{ label: updatedRow["Seed date"], value: updatedRow["Seed date"] }] } : _))
+              );
             }
-            return updatedRow;
-          } else {
-            return _;
           }
-        })
-      );
-    } else {
-      let newRow = { [e.target.name]: e.target.value };
-
-      // Set Seed date when Location is selected for Harvesting
-      if (activityType === "Harvesting" && e.target.name === "Location") {
-        const selectedItem = database.filter((x) => x[2] == updatedRow["Crop"] && x[13] === "Transplanted" && x[9] === e.target.value)[0];
-        if (selectedItem) {
-          newRow["Seed date"] = mergeDate(selectedItem[6]);
+          return updatedRow;
         }
-      }
-      setPopulatedData([...populatedData, newRow]);
-    }
+        return item;
+      })
+    );
   };
 
   const fetchDropdownData = (colIndex, rowIndex, crop) => {
@@ -151,7 +139,7 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
 
   return (
     <ChakraProvider theme={theme}>
-      <Box width={"100%"} overflowX="auto" borderRadius="lg">
+      <Box width="100%" overflowX="auto" borderRadius="lg">
         <Table variant="simple" bg="transparent">
           <Thead bg="gray.50">
             <Tr>
@@ -178,6 +166,7 @@ const ActivityEntryTable = ({ activityType, populatedData, setPopulatedData, dat
                         colIndex={colIndex}
                         rowIndex={rowIndex}
                         loading={loading[rowIndex]}
+                        populatedData={populatedData}
                       />
                     ) : (
                       <Input

@@ -2,37 +2,32 @@ import { Autocomplete, AutocompleteItem } from "@nextui-org/react";
 import React, { useEffect } from "react";
 import { useSelector } from "react-redux";
 
-const AutoCompleteInputDropdown = ({ isDisabled, error, options, column, handleAddValue, fetchDropdownData, colIndex, rowIndex, loading }) => {
-  const populatedData = useSelector((state) => state.dashboard.populatedData);
-  const populateInput = () => {
-    try {
-      return populatedData[rowIndex][column.name];
-    } catch (e) {
-      return "";
+const AutoCompleteInputDropdown = ({ isDisabled, options, column, handleAddValue, fetchDropdownData, colIndex, rowIndex, loading, populatedData }) => {
+  const handleSelectionChange = async (e) => {
+    const newValue = e;
+    if (populatedData[rowIndex][column.name] !== newValue) {
+      try {
+        handleAddValue({ target: { name: column.name, value: newValue } }, rowIndex);
+        fetchDropdownData(colIndex, rowIndex, newValue);
+      } catch (error) {
+        alert(error.message);
+      }
     }
-  };
-
-  const handleInputChange = async (e) => {
-    try {
-      await handleAddValue({ target: { name: column.name, value: e } }, rowIndex);
-      await fetchDropdownData(colIndex, rowIndex, e);
-    } catch (error) {}
   };
 
   return (
     <>
       <Autocomplete
         isDisabled={isDisabled}
-        selectedKey={populateInput()}
+        selectedKey={populatedData.length ? populatedData[rowIndex][column.name] : ""}
         isRequired
         aria-label={column.name}
         isLoading={loading}
         variant={"underlined"}
-        defaultItems={options}
         items={options}
         placeholder={`${column.name}`}
         className="max-w-xs"
-        onSelectionChange={handleInputChange}
+        onSelectionChange={handleSelectionChange}
       >
         {(item) => {
           return <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>;
