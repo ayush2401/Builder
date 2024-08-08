@@ -25,7 +25,7 @@ const page = () => {
 
   const initialPopulatedData = Array(rows).fill(
     columns.reduce((obj, col) => {
-      obj[col.name] = null;
+      obj[col.name] = "";
       return obj;
     }, {})
   );
@@ -86,7 +86,7 @@ const page = () => {
         await dispatch(fetchDatabase()).unwrap();
         if (activityType !== "Seeding") {
           const plantsWithIdAndStatus = preview.reduce((data, item) => {
-            data[item[1]] = item[13];
+            data[item[1]] = item[13] == "Final harvest" ? "Completed" : item[13];
             return data;
           }, {});
           await updateCropsWithPlantStatus(plantsWithIdAndStatus);
@@ -104,9 +104,9 @@ const page = () => {
     const isNull = columns
       .filter((col) => col.required.includes(activityType))
       .map((x) => x.name)
-      .some((field) => item[field] == null);
+      .some((field) => item[field] == "");
 
-    return isNull;
+    return isNull || item['No of sponges'] > 240;
   };
 
   const loopUpDataSet = async () => {
@@ -148,7 +148,6 @@ const page = () => {
       dispatch(setLoading(true));
       try {
         await dispatch(fetchDatabase()).unwrap();
-        // await dispatch(setPopulatedData(initialPopulatedData)).unwrap();
       } catch (err) {
         console.log(err);
       } finally {
@@ -178,7 +177,7 @@ const page = () => {
           }}
         />
       </Box>
-      <ActivitiyEntryTable rows={rows} populatedData={populatedData} setPopulatedData={setPopulatedData} />
+      <ActivitiyEntryTable rows={rows} populatedData={populatedData} setPopulatedData={setPopulatedData} checkForNullValues={checkForNullValues} />
       <Box display="flex" ml="auto" gap="30px">
         <CustomButton onClick={loopUpDataSet}>Lookup</CustomButton>
         {/* <CustomButton onClick={() => setRows((prev) => prev + 1)}>+ Add new row</CustomButton> */}
