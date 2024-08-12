@@ -86,7 +86,7 @@ const page = () => {
         await dispatch(fetchDatabase()).unwrap();
         if (activityType !== "Seeding") {
           const plantsWithIdAndStatus = preview.reduce((data, item) => {
-            data[item[1]] = item[13] == "Final harvest" ? "Completed" : item[13];
+            data[item[1]] = item[13];
             return data;
           }, {});
           await updateCropsWithPlantStatus(plantsWithIdAndStatus);

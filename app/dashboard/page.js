@@ -1,16 +1,5 @@
-"use client";
-
-import React, { useEffect } from "react";
-import ActivityTable from "@/components/dashboard/Tables/Table";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchDatabase } from "@/lib/slices/databaseSlice";
-
+import { redirect } from "next/navigation";
+import React from "react";
 export default function App() {
-  const dispatch = useDispatch();
-  const { database } = useSelector((state) => state.database);
-  useEffect(() => {
-    dispatch(fetchDatabase());
-  }, [dispatch]);
-
-  return <ActivityTable data={database} />;
+  return redirect("/dashboard/home");
 }
